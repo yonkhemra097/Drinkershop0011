@@ -1,0 +1,32 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: bakery
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-dev-only}
+      POSTGRES_DB: bakery
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bakery"]
+      interval: 5s
+      retries: 10
+  redis:
+    image: redis:7
+  api:
+    build: ./backend
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://bakery:${POSTGRES_PASSWORD:-change-me-dev-only}@db:5432/bakery
+    ports: ["8000:8000"]
+    depends_on:
+      db: {condition: service_healthy}
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports: ["3000:3000"]
+    depends_on:
+      - api
+volumes:
+  pgdata:
